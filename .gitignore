@@ -1,0 +1,5 @@
+.vscode
+__pycache__
+added_static_routes.csv
+keenetic.conf
+add_routes.bat

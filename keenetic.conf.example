@@ -1,0 +1,5 @@
+[Router]
+ip_addr = 192.168.1.1
+login = admin
+password = admin
+default_interface = Wireguard0
