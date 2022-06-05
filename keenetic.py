@@ -46,21 +46,55 @@ class Keenetic:
         else:
             return False
 
-    def validate_ip(self, ip):
+    def __validate_ip(self, ip):
         try:
             return ipaddress.ip_address(ip)
         except ValueError:
             return False
+
+    def get_routes(self):
+        if not self.keen_auth():
+            raise RuntimeError("Cannot authorize")
+
+        response = self.keen_request("rci/show/ip/route").json()
+        routes = dict()
+        for item in response:
+            if item["interface"] == self.default_interface:
+                dst = self.__strip_netmask(item["destination"])
+                routes[dst] = item
+        return routes
+
+    def get_routes_by_interface(self):
+        if not self.keen_auth():
+            raise RuntimeError("Cannot authorize")
+
+        response = self.keen_request("rci/show/ip/route").json()
+        routes = dict()
+        routes[self.default_interface] = list()
+        for item in response:
+            if item["interface"] == self.default_interface:
+                dst = self.__strip_netmask(item["destination"])
+                routes[self.default_interface].append(dst)
+        return routes
+
+    def __strip_netmask(self, ip):
+        slash = ip.find("/")
+        if slash == -1:
+            return ip
+        else:
+            return ip[0:slash]
 
 
     def add_ip_route(self, route_ip, interface=False):
         if not interface:
             interface = self.default_interface
 
-        if not self.keen_auth():
-            raise RuntimeError("Cannot authorize")
+        existing_routes = self.get_routes().keys()
+        if route_ip in existing_routes:
+            click.echo(f"Route already exists {route_ip}")
+            return
 
-        ip_type = self.validate_ip(route_ip)
+        ip_type = self.__validate_ip(route_ip)
         if not ip_type:
             return False
         elif ip_type.version == 4:
@@ -91,7 +125,7 @@ class Keenetic:
         if not self.keen_auth():
             raise RuntimeError("Cannot authorize")
 
-        ip_type = self.validate_ip(route_ip)
+        ip_type = self.__validate_ip(route_ip)
         if not ip_type:
             return False
         elif ip_type.version == 4:

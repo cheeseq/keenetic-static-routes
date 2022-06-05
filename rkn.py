@@ -35,29 +35,18 @@ def add_route(keenetic, routes):
 def _add_routes(keenetic, routes):
     routes = routes.split("|")
     routes_ips = []
-    with open(ADDED_ROUTES_FILE_NAME, "r+", newline="") as csv_file:
-        existing_routes = set()
-        csv_reader = csv.reader(csv_file, "excel")
-        for existing_route in csv_reader:
-            existing_routes.add(existing_route[0])
+    for route in routes:
+        url = urlparse(route)
+        if url.netloc:
+            answers = dns.resolver.resolve(url.netloc, 'A')
+            for a in answers:
+                routes_ips.append(a.to_text())
+        else:
+            routes_ips.append(route)
         
-        csv_writer = csv.writer(csv_file, "excel")
-
-        for route in routes:
-            url = urlparse(route)
-            if url.netloc:
-                answers = dns.resolver.resolve(url.netloc, 'A')
-                for a in answers:
-                    routes_ips.append(a.to_text())
-            else:
-                routes_ips.append(route)
-            
-        for ip in routes_ips:
-            if ip not in existing_routes:
-                if keenetic.add_ip_route(ip):
-                    existing_routes.add(ip)
-                    csv_writer.writerow([ip, keenetic.default_interface])
-            time.sleep(REQUESTS_INTERVAL_SEC)
+    for ip in routes_ips:
+        keenetic.add_ip_route(ip)
+        time.sleep(REQUESTS_INTERVAL_SEC)
 
 @cli.command()
 @click.argument('to')
